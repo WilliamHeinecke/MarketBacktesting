@@ -11,7 +11,7 @@
 
 using json = nlohmann::json;
 
-Stock::Stock(const std::string& tickerInit) : ticker(tickerInit), fwdPE(0.0), priceInterval(1), window(30) {
+Stock::Stock(const std::string& tickerInit) : ticker(tickerInit), fwdPE(0.0), priceInterval(1), period(30) {
     std::cout << "Stock created " << ticker << std::endl;
 
     curl_global_init(CURL_GLOBAL_DEFAULT);
@@ -43,6 +43,7 @@ void Stock::refreshPriceDataHelper(const std::string& ticker) {
     if (curl) {
         const std::string url = buildAPIUrl(ticker);
         std::cout << "URL: " << url << std::endl;
+        if (url.empty()) {return;}
         curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
@@ -54,7 +55,7 @@ void Stock::refreshPriceDataHelper(const std::string& ticker) {
         if (res != CURLE_OK) {
             std::cout << "Error: " << curl_easy_strerror(res) << std::endl;
         }else {
-            std::cout << "Response Length: " << response.data.length() << std::endl;
+            std::cout << "Response Length: " << response.data << std::endl;
             const bool successParse = parseJsonResponse(response.data);
         }
 
@@ -65,10 +66,16 @@ void Stock::refreshPriceDataHelper(const std::string& ticker) {
 }
 
 std::string Stock::buildAPIUrl(const std::string& ticker, const std::string& period) const {
+    const std::string apiKey = getEnvVar("ALPHA_API_KEY");
+    if (apiKey.empty()) {
+        std::cout << "API key not found" << std::endl;
+        return "";
+    }
+
     std::string url = "https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=";
     url += ticker;
     url += "&interval=5min&outputsize=full&apikey=";
-    const std::string apiKey = getEnvVar("ALPHA_API_KEY");
+
     url += apiKey;
     return url;
 }
@@ -80,7 +87,7 @@ bool Stock::parseJsonResponse(const std::string& res) {
     std::vector<PriceData> priceDataTemp;
 
     for (auto& element : priceDataJson.items()) {
-        std::cout << element.key() << " open: " << element.value()["1. open"] << std::endl;
+        //std::cout << element.key() << " open: " << element.value()["1. open"] << std::endl;
         priceDataTemp.push_back(PriceData{
             element.key(),
             std::stod(element.value()["1. open"].template get<std::string>()),
@@ -93,4 +100,12 @@ bool Stock::parseJsonResponse(const std::string& res) {
 
     setPriceData(priceDataTemp);
     return true;
+}
+
+double Stock::getSimpleMovingAverage(int period) {
+    double simpleMovingAverage = 0.0;
+    for (auto& element : priceData) {
+        simpleMovingAverage += element.close;
+    }
+    return simpleMovingAverage / priceData.size();
 }

@@ -30,11 +30,16 @@ private:
     std::vector<PriceData> priceData;
     double fwdPE;
     int priceInterval;
-    int window;
+    int period;
 
     static size_t WriteCallback(void* contents, size_t size, size_t nmemb, APIResponse* response);
     std::string buildAPIUrl(const std::string& ticker, const std::string& period = "1mo") const;
     bool parseJsonResponse(const std::string& res);
+
+    inline void setPriceData(const std::vector<PriceData>& priceDataInit) {
+        priceData = priceDataInit;
+        std::cout << "Price data length" <<priceData.size() << std::endl;
+    };
 public:
     Stock(const std::string& tickerInit);
     ~Stock();
@@ -42,10 +47,7 @@ public:
     void refreshPriceData();
     void refreshPriceDataHelper(const std::string& ticker);
 
-    inline void setPriceData(const std::vector<PriceData>& priceDataInit) {
-        priceData = priceDataInit;
-        std::cout << "Price data length" <<priceData.size() << std::endl;
-    };
+    double getSimpleMovingAverage( int period = 0);
 
 };
 
