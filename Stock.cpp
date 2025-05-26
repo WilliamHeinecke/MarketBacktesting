@@ -3,11 +3,13 @@
 //
 
 #include "Stock.h"
-
+#include "GetEnv.h"
+#include "nlohmann/json.hpp"
 #include <iostream>
 #include <bits/ostream.tcc>
 #include <curl/curl.h>
 
+using json = nlohmann::json;
 
 Stock::Stock(const std::string& tickerInit) : ticker(tickerInit), fwdPE(0.0), priceInterval(1), window(30) {
     std::cout << "Stock created " << ticker << std::endl;
@@ -52,7 +54,8 @@ void Stock::refreshPriceDataHelper(const std::string& ticker) {
         if (res != CURLE_OK) {
             std::cout << "Error: " << curl_easy_strerror(res) << std::endl;
         }else {
-            std::cout << "Response: " << response.data.length() << std::endl;
+            std::cout << "Response Length: " << response.data.length() << std::endl;
+            const bool successParse = parseJsonResponse(response.data);
         }
 
         curl_easy_cleanup(curl);
@@ -62,13 +65,32 @@ void Stock::refreshPriceDataHelper(const std::string& ticker) {
 }
 
 std::string Stock::buildAPIUrl(const std::string& ticker, const std::string& period) const {
-    std::string url = "https://query1.finance.yahoo.com/v7/finance/download/";
+    std::string url = "https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=";
     url += ticker;
-    url += "?period1=1588278400&period2=1650860800&interval=1d&events=history&includeAdjustedClose=true";
+    url += "&interval=5min&outputsize=full&apikey=";
+    const std::string apiKey = getEnvVar("ALPHA_API_KEY");
+    url += apiKey;
     return url;
 }
 
-bool Stock::parseResponse(const std::string& res) {
+bool Stock::parseJsonResponse(const std::string& res) {
 
-    return false;
+    json wholeDataJson = json::parse(res);
+    json priceDataJson = wholeDataJson["Time Series (5min)"];
+    std::vector<PriceData> priceDataTemp;
+
+    for (auto& element : priceDataJson.items()) {
+        std::cout << element.key() << " open: " << element.value()["1. open"] << std::endl;
+        priceDataTemp.push_back(PriceData{
+            element.key(),
+            std::stod(element.value()["1. open"].template get<std::string>()),
+            std::stod(element.value()["2. high"].template get<std::string>()),
+            std::stod(element.value()["3. low"].template get<std::string>()),
+            std::stod(element.value()["4. close"].template get<std::string>()),
+            std::stol(element.value()["5. volume"].template get<std::string>())
+        });
+    }
+
+    setPriceData(priceDataTemp);
+    return true;
 }

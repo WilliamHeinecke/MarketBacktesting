@@ -5,6 +5,7 @@ set(CMAKE_CXX_STANDARD 20)
 find_package(CURL REQUIRED)
 add_executable(MarketBacktesting main.cpp
         Stock.cpp
-        Stock.h)
+        Stock.h
+        GetEnv.h)
 
 target_link_libraries(MarketBacktesting CURL::libcurl)

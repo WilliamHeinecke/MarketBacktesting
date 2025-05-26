@@ -5,8 +5,10 @@
 #ifndef STOCK_H
 #define STOCK_H
 
+#include <iostream>
 #include <string>
 #include <vector>
+#include <bits/ostream.tcc>
 
 struct PriceData {
     std::string date;
@@ -32,7 +34,7 @@ private:
 
     static size_t WriteCallback(void* contents, size_t size, size_t nmemb, APIResponse* response);
     std::string buildAPIUrl(const std::string& ticker, const std::string& period = "1mo") const;
-    bool parseResponse(const std::string& res);
+    bool parseJsonResponse(const std::string& res);
 public:
     Stock(const std::string& tickerInit);
     ~Stock();
@@ -40,6 +42,10 @@ public:
     void refreshPriceData();
     void refreshPriceDataHelper(const std::string& ticker);
 
+    inline void setPriceData(const std::vector<PriceData>& priceDataInit) {
+        priceData = priceDataInit;
+        std::cout << "Price data length" <<priceData.size() << std::endl;
+    };
 
 };
 
