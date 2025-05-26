@@ -9,11 +9,17 @@
 #include <vector>
 
 struct PriceData {
+    std::string date;
     double open;
     double high;
     double low;
     double close;
+    long volume;
+};
 
+struct APIResponse {
+    std::string data;
+    long response_code;
 };
 
 class Stock {
@@ -23,9 +29,16 @@ private:
     double fwdPE;
     int priceInterval;
     int window;
+
+    static size_t WriteCallback(void* contents, size_t size, size_t nmemb, APIResponse* response);
+    std::string buildAPIUrl(const std::string& ticker, const std::string& period = "1mo") const;
+    bool parseResponse(const std::string& res);
 public:
-    Stock(std::string ticker);
-    void refreshPriceData(std::string ticker);
+    Stock(const std::string& tickerInit);
+    ~Stock();
+
+    void refreshPriceData();
+    void refreshPriceDataHelper(const std::string& ticker);
 
 
 };
