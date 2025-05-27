@@ -8,9 +8,9 @@
 #include <iostream>
 #include <bits/ostream.tcc>
 #include <curl/curl.h>
+#include <fstream>
 
 using json = nlohmann::json;
-
 Stock::Stock(const std::string& tickerInit) : ticker(tickerInit), fwdPE(0.0), priceInterval(1), period(30) {
     std::cout << "Stock created " << ticker << std::endl;
 
@@ -31,6 +31,26 @@ size_t Stock::WriteCallback(void* contents, size_t size, size_t nmemb, APIRespon
 
 void Stock::refreshPriceData() {
 
+    std::string fileName = "../price_data_cache/" + ticker + ".json";
+    std::filesystem::create_directories("../price_data_cache");
+
+
+    if (std::filesystem::exists(fileName)) {
+        APIResponse response;
+        std::ifstream f(fileName.c_str());
+        std::cout << "File found" << std::endl;
+        std::string line;
+        while (std::getline(f, line)) {
+            response.data += line;
+        }
+        f.close();
+        parseJsonResponse(response.data);
+        return;
+    }
+    else {
+        std::cout << "File not found" << std::endl;
+    }
+
     refreshPriceDataHelper(ticker);
 }
 
@@ -39,6 +59,7 @@ void Stock::refreshPriceDataHelper(const std::string& ticker) {
 
     CURL *curl= curl_easy_init();
     APIResponse response;
+
 
     if (curl) {
         const std::string url = buildAPIUrl(ticker);
@@ -57,6 +78,10 @@ void Stock::refreshPriceDataHelper(const std::string& ticker) {
         }else {
             std::cout << "Response Length: " << response.data << std::endl;
             const bool successParse = parseJsonResponse(response.data);
+            std::string fileName = "../price_data_cache/" + ticker + ".json";
+            std::ofstream f(fileName.c_str());
+            f << response.data;
+            f.close();
         }
 
         curl_easy_cleanup(curl);
